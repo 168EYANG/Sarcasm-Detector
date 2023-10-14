@@ -1,0 +1,23 @@
+{
+    "manifest_version": 2,
+    "name": "Reddit Comment Symbols",
+    "version": "1.0",
+    "description": "Add a symbol next to all Reddit comments.",
+    "permissions": ["activeTab"],
+    "browser_action": {
+      "default_icon": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+      },
+      "default_title": "Reddit Comment Symbols",
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [
+      {
+        "matches": ["*://*/*"],
+        "js": ["content.js"]
+      }
+    ]
+  }
+  
