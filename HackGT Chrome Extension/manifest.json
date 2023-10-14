@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
-    "name": "Reddit Comment Symbols",
+    "name": "Sarcasm Detector",
     "version": "1.0",
-    "description": "Add a symbol next to all Reddit comments.",
+    "description": "Displays if a comment is sarcasm or not.",
     "permissions": ["activeTab"],
     "browser_action": {
       "default_icon": {
@@ -10,13 +10,20 @@
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
       },
-      "default_title": "Comment Symbols",
       "default_popup": "popup.html"
     },
     "content_scripts": [
       {
-        "matches": ["*://*/*"],
-        "js": ["content.js"]
+        "matches": ["*://*.reddit.com/*"],
+        "js": ["reddit_content.js"]
+      },
+      {
+        "matches": ["*://*.instagram.com/*"],
+        "js": ["instagram_content.js"]
+      },
+      {
+        "matches": ["*://*.twitter.com/*"],
+        "js": ["twitter_content.js"]
       }
     ]
   }
