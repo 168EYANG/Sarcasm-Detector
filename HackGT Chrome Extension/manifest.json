@@ -19,8 +19,8 @@
         "js": ["reddit_content.js"]
       },
       {
-        "matches": ["*://*.instagram.com/*"],
-        "js": ["instagram_content.js"]
+        "matches": ["*://*.youtube.com/*"],
+        "js": ["youtube_content.js"]
       },
       {
         "matches": ["*://*.twitter.com/*"],
