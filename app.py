@@ -107,7 +107,7 @@ def get_prediction(text):
 @app.route('/predict', methods=['GET'])
 def predict():
     if request.method == 'GET':
-        text = request.input
+        text = request.data
         sent_pred = get_prediction(text) # Send text to get_prediction
         return jsonify({'sentiment': output_map[sent_pred]})
 
