@@ -1,2 +1,2 @@
-# Sarcasm-Detector
-Sarcasm Detector - project for HackGT X
+# Sentiment Analysis
+Sentiment Analyzer - project for HackGT X
