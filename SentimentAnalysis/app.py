@@ -4,13 +4,15 @@ import torch
 from torch import nn
 import numpy as np
 from flask import Flask, jsonify, request
+import SentimentAnalysis.model as sm
 import re
 import html
 from nltk.tokenize import word_tokenize
 
 
 app = Flask(__name__)
-model = torch.load('./SentimentAnalysis/trained_model.pt')
+model = sm.SarcasmModel(300)
+model.load_state_dict(torch.load('trained_model.pt'))
 model.eval()
 
 def spec_add_spaces(t: str) -> str:

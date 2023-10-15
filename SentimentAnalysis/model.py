@@ -239,7 +239,7 @@ for epoch in range(TOTAL_EPOCHS):
     print("train acc: ", str(train_acc))
     print("val acc: ", str(val_acc))
 
-    torch.save(model, "trained_model.pt")
+    torch.save(model.state_dict(), "trained_model.pt")
 
 loss_graph.plot(x="id", y="total loss")
 acc_graph.plot(x="id", y="train acc")

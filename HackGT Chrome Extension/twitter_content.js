@@ -22,7 +22,7 @@ setInterval(() => {
         //     }
         // )
 
-        fetch('url/?input='+tweet.textContent)
+        fetch('url/?input='+tweet.innerHTML)
             .then(response => response.json())
             .then(data => {
                 console.log('Data from backend: ', data);
@@ -35,8 +35,7 @@ setInterval(() => {
                 }
             })
             .catch(error => console.error('Error: ', error));
-
-    
+        
         
 
         // if (result == [1, 0, 0,]) {
@@ -53,7 +52,7 @@ setInterval(() => {
         // }
         symbol.style.marginRight = '5px';
         // if (!tweet.includes('/srs') && !tweet.includes('/s')) {
-        string = tweet.textContent + symbol.textContent;
+        string = tweet.innerHTML + symbol.textContent;
         if (!tweet.innerHTML.includes(' - ❌ negative') && !tweet.innerHTML.includes(' - ✅ positive') && !tweet.innerHTML.includes(' - 😐 neutral')) {
             tweet.innerHTML = string;
         }
