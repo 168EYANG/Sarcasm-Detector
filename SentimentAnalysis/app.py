@@ -106,12 +106,10 @@ def get_prediction(text):
     return np.argmax(torch.Tensor.detach(torch.Tensor.cpu(prediction)).numpy())
 
 
-@app.route('/predict', methods=['GET'])
-def predict():
-    if request.method == 'GET':
-        text = request.data
-        sent_pred = get_prediction(text) # Send text to get_prediction
-        return jsonify({'sentiment': output_map[sent_pred]})
+@app.route('/predict/<jsdata>')
+def predict(jsdata):
+    sent_pred = get_prediction(jsdata)
+    return jsonify({'sentiment': output_map[sent_pred]})
 
 
 if __name__ == '__main__':
