@@ -18,6 +18,8 @@ device = torch.device("cuda")
 
 df = pd.read_csv("./sarc_datasets/train-balanced-sarcasm.csv")
 df.head()
+df = df[df['comment'].notna()]
+df = df[df['label'].notna()]
 
 # check class distribution
 df['label'].value_counts(normalize = True)
@@ -25,14 +27,12 @@ df['label'].value_counts(normalize = True)
 # split train dataset into train, validation and test sets
 train_text, temp_text, train_labels, temp_labels = train_test_split(df['comment'], df['label'], 
                                                                     random_state=2018, 
-                                                                    test_size=0.3, 
-                                                                    stratify=df['label'])
+                                                                    test_size=0.3)
 
 
 val_text, test_text, val_labels, test_labels = train_test_split(temp_text, temp_labels, 
                                                                 random_state=2018, 
-                                                                test_size=0.5, 
-                                                                stratify=temp_labels)
+                                                                test_size=0.5)
 
 # import BERT-base pretrained model
 bert = AutoModel.from_pretrained('bert-base-uncased')
@@ -41,31 +41,34 @@ bert = AutoModel.from_pretrained('bert-base-uncased')
 tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
 
 # get length of all the messages in the train set
-seq_len = [len(i.split()) for i in train_text]
+seq_len = []
+for i in train_text:
+    seq_len.append(len(i.split()))
+# seq_len = [len(i.split()) for i in train_text]
 
 pd.Series(seq_len).hist(bins = 30)
 
 # tokenize and encode sequences in the training set
-tokens_train = tokenizer.batch_encode_plus(
+tokens_train = tokenizer.__call__(
     train_text.tolist(),
     max_length = 25,
-    pad_to_max_length=True,
+    pad_to_max_length=False,
     truncation=True
 )
 
 # tokenize and encode sequences in the validation set
-tokens_val = tokenizer.batch_encode_plus(
+tokens_val = tokenizer.__call__(
     val_text.tolist(),
     max_length = 25,
-    pad_to_max_length=True,
+    pad_to_max_length=False,
     truncation=True
 )
 
 # tokenize and encode sequences in the test set
-tokens_test = tokenizer.batch_encode_plus(
+tokens_test = tokenizer.__call__(
     test_text.tolist(),
     max_length = 25,
-    pad_to_max_length=True,
+    pad_to_max_length=False,
     truncation=True
 )
 
