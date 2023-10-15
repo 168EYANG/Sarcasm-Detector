@@ -83,65 +83,83 @@ print(embs_npa[:10])
 PADDING = 0
 UNKNOWN_WORD = 1
 MAX_COMMENT_SIZE = 50
-BATCH_SIZE = 64
-TOTAL_EPOCHS = 100
+BATCH_SIZE = 32
+TOTAL_EPOCHS = 30
 
-# data = pd.read_csv("train-balanced-sarcasm.csv", on_bad_lines='skip')
-# data = data[data['comment'].notna()]
-# data_len = len(data)
+# text / sentiment / negative-neutral-positive
+data_1 = pd.read_csv("train_1.csv", on_bad_lines='skip', encoding='unicode_escape')
+data_1 = data_1[data_1['text'].notna()]
+data_1 = data_1[data_1['sentiment'].isin(['negative', 'neutral', 'positive'])]
+data_1_specific = data_1.loc[:, ['text', 'sentiment']]
 
+# text / sentiment / negative-neutral-positive
+data_2 = pd.read_csv("train_2.csv", on_bad_lines='skip', encoding='unicode_escape')
+data_2 = data_2[data_2['text'].notna()]
+data_2 = data_2[data_2['sentiment'].isin(['negative', 'neutral', 'positive'])]
+data_2_specific = data_2.loc[:, ['text', 'sentiment']]
+
+# text / sentiment / Negative-Neutral-Positive
+data_3 = pd.read_csv("train_3.csv", on_bad_lines='skip', encoding='unicode_escape')
+data_3 = data_3[data_3['text'].notna()]
+data_3 = data_3[data_3['sentiment'].isin(['negative', 'neutral', 'positive'])]
+data_3_specific = data_3.loc[:, ['text', 'sentiment']]
+
+data = pd.concat([data_1_specific, data_2_specific, data_3_specific], ignore_index=True)
+data_len = len(data)
+sentiment_map = {'negative':[1,0,0], 'neutral':[0,1,0], 'positive':[0,0,1]}
+
+for i in tqdm(range(data_len)):
+    data.at[i, 'text'] = clean_text(data.iloc[i]['text'])
+    data.at[i, 'text'] = data.at[i, 'text'].lower()
+    data.at[i, 'text'] = word_tokenize(data.at[i, 'text'])
+    data.at[i, 'sentiment'] = sentiment_map[data.at[i, 'sentiment']]
+data.to_json('train-balanced-sarcasm-processed.json')
+
+# data = pd.read_json("train-balanced-sarcasm-processed.json")
+data_len = len(data)
+
+# create dictionary of words, and word-to-id dictionary
+# word_dict = dict()
 # for i in tqdm(range(data_len)):
-#     data.at[i, 'comment'] = clean_text(data.iloc[i]['comment'])
-#     data.at[i, 'comment'] = data.at[i, 'comment'].lower()
-#     data.at[i, 'comment'] = word_tokenize(data.at[i, 'comment'])
-# data.to_json('train-balanced-sarcasm-processed.json')
+#     for word in data.iloc[i]["comment"]:
+#         if word not in word_dict:
+#             word_dict[word] = 0
+#         word_dict[word] += 1
+# print(len(word_dict))
 
-# # data = pd.read_json("train-balanced-sarcasm-processed.json")
-# data_len = len(data)
+# word_to_id = {"": PADDING, "UNK": UNKNOWN_WORD}
+# running_id = 2
+# for key in word_dict:
+#     if word_dict[key] > 10:
+#         word_to_id[key] = running_id
+#         running_id += 1
+# print(len(word_to_id))
 
-# # create dictionary of words, and word-to-id dictionary
-# # word_dict = dict()
-# # for i in tqdm(range(data_len)):
-# #     for word in data.iloc[i]["comment"]:
-# #         if word not in word_dict:
-# #             word_dict[word] = 0
-# #         word_dict[word] += 1
-# # print(len(word_dict))
-
-# # word_to_id = {"": PADDING, "UNK": UNKNOWN_WORD}
-# # running_id = 2
-# # for key in word_dict:
-# #     if word_dict[key] > 10:
-# #         word_to_id[key] = running_id
-# #         running_id += 1
-# # print(len(word_to_id))
-
-# # convert all comment arrays to arrays of numbers
-# for i in tqdm(range(data_len)):
-#     new_comment = []
-#     old_comment = data.iloc[i]["comment"]
-#     for counter in range(min(len(old_comment), MAX_COMMENT_SIZE)):
-#         word = old_comment[counter]
-#         if word not in vocab_npa_dict.keys():
-#             new_comment.append(UNKNOWN_WORD)
-#         else:
-#             new_comment.append(vocab_npa_dict[word])
-#     while len(new_comment) < MAX_COMMENT_SIZE:
-#         new_comment.append(PADDING)
-#     data.at[i, "comment"] = new_comment
-# data.to_json('train-balanced-sarcasm-numbered.json')
+# convert all comment arrays to arrays of numbers
+for i in tqdm(range(data_len)):
+    new_comment = []
+    old_comment = data.iloc[i]["text"]
+    for counter in range(min(len(old_comment), MAX_COMMENT_SIZE)):
+        word = old_comment[counter]
+        if word not in vocab_npa_dict.keys():
+            new_comment.append(UNKNOWN_WORD)
+        else:
+            new_comment.append(vocab_npa_dict[word])
+    while len(new_comment) < MAX_COMMENT_SIZE:
+        new_comment.append(PADDING)
+    data.at[i, "text"] = new_comment
+data.to_json('train-balanced-sarcasm-numbered.json')
 
 embedding_dims = 300
 
 data = pd.read_json("train-balanced-sarcasm-numbered.json")
-data = data[data["label"].notna()]
 data_len = len(data)
 
 # oops i forgot the vocabulary max size
 # max_vocab = 27080
 max_vocab = 0
 for i in tqdm(range(data_len)):
-    for word in data.iloc[i]["comment"]:
+    for word in data.iloc[i]["text"]:
         if word == 0:
             break
         max_vocab = max(max_vocab, word)
@@ -155,8 +173,8 @@ class SarcasmDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, index: int):
-        tokenized_word_tensor = torch.tensor(self.df.iloc[index]["comment"], dtype=torch.long)
-        curr_label = self.df.iloc[index]["label"]
+        tokenized_word_tensor = torch.tensor(self.df.iloc[index]["text"], dtype=torch.long)
+        curr_label = self.df.iloc[index]["sentiment"]
         return tokenized_word_tensor, curr_label
 
 class SarcasmModel(nn.Module):
@@ -168,21 +186,21 @@ class SarcasmModel(nn.Module):
         assert self.embedding.weight.shape == embs_npa.shape
         print(self.embedding.weight.shape)
         # self.conv = nn.Conv1d(embedding_dim, 32, kernel_size=3, padding="same", device=device)
-        self.lstm = nn.LSTM(embedding_dim, 128, bidirectional=True, batch_first=True, device=device)
-        self.linear_1 = nn.Linear(256, 32, device=device)
-        # self.linear_2 = nn.Linear(64, 16, device=device)
-        self.linear_2 = nn.Linear(32, 1, device=device)
+        self.lstm = nn.LSTM(embedding_dim, 196, bidirectional=True, batch_first=True, device=device, dropout=0.5, num_layers=2)
+        self.linear_1 = nn.Linear(196*2, 3, device=device)
+        #self.linear_2 = nn.Linear(64, 32, device=device)
+        #self.linear_3 = nn.Linear(32, 3, device=device)
     def forward(self, x):
         embed_full = self.embedding(x)
         # conved = nn.functional.relu(self.conv(embed_full))
         # conved, _ = conved.max(dim = -1)
         lstm_output, _ = self.lstm(embed_full)
-        max_pooled = torch.max(lstm_output, axis=1).values.view(BATCH_SIZE, 256)
-        hidden_1 = nn.functional.dropout1d(nn.functional.relu(self.linear_1(max_pooled)), 0.2)
-        # hidden_2 = nn.functional.dropout1d(nn.functional.relu(self.linear_2(hidden_1)), 0.2)
-        output = nn.functional.sigmoid(self.linear_2(hidden_1))
+        max_pooled = torch.max(lstm_output, axis=1).values.view(BATCH_SIZE, 196*2)
+        #hidden_1 = nn.functional.dropout1d(nn.functional.relu(self.linear_1(max_pooled)), 0.2)
+        #hidden_2 = nn.functional.dropout1d(nn.functional.relu(self.linear_2(hidden_1)), 0.2)
+        output = nn.functional.sigmoid(self.linear_1(max_pooled))
         # output = nn.functional.sigmoid(self.linear_1(conved))
-        return output
+        return output.view(-1, 3)
 
 def collate(batch, padding_value = PADDING):
     padded_tokens = []
@@ -195,7 +213,7 @@ def collate(batch, padding_value = PADDING):
     return padded_tokens, y_labels
 
 data = data.sample(frac=1)
-thresh = int(data_len * 0.75)
+thresh = int(data_len * 0.8)
 train_df = data.iloc[:thresh]
 train_dataset = SarcasmDataset(train_df)
 test_df = data.iloc[thresh:]
@@ -206,7 +224,10 @@ test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, sampler=RandomSa
 
 model = SarcasmModel(embedding_dims)
 loss_fn = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+
+loss_graph = pd.DataFrame(columns=['id', 'total loss'])
+acc_graph = pd.DataFrame(columns=['id', 'train acc', 'val acc'])
 
 for epoch in range(TOTAL_EPOCHS):
 
@@ -214,35 +235,50 @@ for epoch in range(TOTAL_EPOCHS):
     pbar = tqdm(train_iterator)
     total_loss = 0
     model.train()
-    for x, y in pbar:
-        if len(x) != 64:
+    train_correct = 0
+    train_total = 0
+    for x, true in pbar:
+        if len(x) != BATCH_SIZE:
             continue
         model.zero_grad()
-        y_pred = model.forward(x)
-        loss = loss_fn(y_pred.view(-1), y)
-        if counter % 25 == 0:
-            pbar.set_description(str(loss))
+        pred = model.forward(x)
+        for i in range(len(true)):
+            if np.argmax(torch.Tensor.detach(torch.Tensor.cpu(true[i])).numpy()) == np.argmax(torch.Tensor.detach(torch.Tensor.cpu(pred[i])).numpy()):
+                train_correct += 1
+        train_total += len(true)
+        loss = loss_fn(pred, true)
         loss.backward()
         optimizer.step()
         counter += 1
-        total_loss += loss
+        total_loss += loss.item()
+    train_acc = train_correct / train_total
 
     valbar = tqdm(test_iterator)
-    correct = 0
-    total = 0
+    val_correct = 0
+    val_total = 0
     for x, true in valbar:
-        if len(x) != 64:
+        if len(x) != BATCH_SIZE:
             continue
-        pred = torch.round(model.forward(x).view(-1))
+        pred = torch.round(model.forward(x))
         for i in range(len(true)):
-            if true[i] == pred[i]:
-                correct += 1
-        total += len(true)
-    acc = correct / total
-    print(total_loss)
-    print(acc)
+            if np.argmax(torch.Tensor.detach(torch.Tensor.cpu(true[i])).numpy()) == np.argmax(torch.Tensor.detach(torch.Tensor.cpu(pred[i])).numpy()):
+                val_correct += 1
+        val_total += len(true)
+    val_acc = val_correct / val_total
+    
+    loss_graph.loc[len(loss_graph.index)] = [epoch, total_loss]
+    acc_graph.loc[len(acc_graph.index)] = [epoch, train_acc, val_acc]
+    
+    print("----- RESULTS OF EPOCH ", str(epoch), " -----")
+    print("total loss: ", str(total_loss))
+    print("train acc: ", str(train_acc))
+    print("val acc: ", str(val_acc))
 
     torch.save(model, "trained_model.pt")
+
+loss_graph.plot(x="id", y="total loss")
+acc_graph.plot(x="id", y="train acc")
+acc_graph.plot(x="id", y="val acc")
 
 # ##hyper parameters
 # batch_size = 64
