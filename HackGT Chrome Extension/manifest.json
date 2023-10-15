@@ -3,7 +3,7 @@
     "name": "Sarcasm Detector",
     "version": "1.0",
     "description": "Displays if a comment is sarcasm or not.",
-    "permissions": ["activeTab"],
+    "permissions": ["activeTab", "http://127.0.0.1:8000/", "notifications"],
     "browser_action": {
       "default_icon": {
         "16": "icons/icon16.png",
