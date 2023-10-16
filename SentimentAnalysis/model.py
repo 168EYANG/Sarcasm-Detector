@@ -1,77 +1,20 @@
 import pandas as pd
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm
-import re
-import html
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader, RandomSampler
 import numpy as np
+import generate_dicts as gd
+import textClean as tc
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def spec_add_spaces(t: str) -> str:
-    "Add spaces around / and # in `t`. \n"
-    return re.sub(r"([/#\n])", r" \1 ", t)
 
-def rm_useless_spaces(t: str) -> str:
-    "Remove multiple spaces in `t`."
-    return re.sub(" {2,}", " ", t)
 
-def replace_multi_newline(t: str) -> str:
-    return re.sub(r"(\n(\s)*){2,}", "\n", t)
-
-def fix_html(x: str) -> str:
-    "List of replacements from html strings in `x`."
-    re1 = re.compile(r"  +")
-    x = (
-        x.replace("#39;", "'")
-        .replace("amp;", "&")
-        .replace("#146;", "'")
-        .replace("nbsp;", " ")
-        .replace("#36;", "$")
-        .replace("\\n", "\n")
-        .replace("quot;", "'")
-        .replace("<br />", "\n")
-        .replace('\\"', '"')
-        .replace(" @.@ ", ".")
-        .replace(" @-@ ", "-")
-        .replace(" @,@ ", ",")
-        .replace("\\", " \\ ")
-    )
-    return re1.sub(" ", html.unescape(x))
-
-def clean_text(input_text):
-    text = fix_html(input_text)
-    text = replace_multi_newline(text)
-    text = spec_add_spaces(text)
-    text = rm_useless_spaces(text)
-    text = text.strip()
-    return text
-
-vocab, embeddings = [],[]
-with open('glove.6B.300d.txt','rt', encoding="utf8") as fi:
-    full_content = fi.read().strip().split('\n')
-for i in range(len(full_content)):
-    i_word = full_content[i].split(' ')[0]
-    i_embeddings = [float(val) for val in full_content[i].split(' ')[1:]]
-    vocab.append(i_word)
-    embeddings.append(i_embeddings)
-vocab_npa = np.array(vocab)
-embs_npa = np.array(embeddings)
-vocab_npa = np.insert(vocab_npa, 0, '<pad>')
-vocab_npa = np.insert(vocab_npa, 1, '<unk>')
-print(vocab_npa[:10])
-vocab_npa_dict = dict()
-for i in range(len(vocab_npa)):
-    vocab_npa_dict[vocab_npa[i]] = i
-
-pad_emb_npa = np.zeros((1,embs_npa.shape[1]))   #embedding for '<pad>' token.
-unk_emb_npa = np.mean(embs_npa,axis=0,keepdims=True)    #embedding for '<unk>' token.
-
-#insert embeddings for pad and unk tokens at top of embs_npa.
-embs_npa = np.vstack((pad_emb_npa,unk_emb_npa,embs_npa))
-print(embs_npa[:10])
+# get embeddings array and vocab dictionary
+embs_npa = gd.getEmbs()
+vocab_npa_dict = gd.getVoc()
 
 PADDING = 0
 UNKNOWN_WORD = 1
@@ -102,7 +45,7 @@ data_len = len(data)
 sentiment_map = {'negative':[1,0,0], 'neutral':[0,1,0], 'positive':[0,0,1]}
 
 for i in tqdm(range(data_len)):
-    data.at[i, 'text'] = clean_text(data.iloc[i]['text'])
+    data.at[i, 'text'] = tc.clean_text(data.iloc[i]['text'])
     data.at[i, 'text'] = data.at[i, 'text'].lower()
     data.at[i, 'text'] = word_tokenize(data.at[i, 'text'])
     data.at[i, 'sentiment'] = sentiment_map[data.at[i, 'sentiment']]
@@ -152,12 +95,11 @@ class SarcasmDataset(Dataset):
         return tokenized_word_tensor, curr_label
 
 class SarcasmModel(nn.Module):
-    def __init__(self, embedding_dim) -> None:
+    def __init__(self, embedding_dim, embs_npa) -> None:
         super().__init__()
         self.embedding_dim = embedding_dim
         self.embedding = torch.nn.Embedding.from_pretrained(torch.from_numpy(embs_npa).float()).to(device)
         assert self.embedding.weight.shape == embs_npa.shape
-        print(self.embedding.weight.shape)
         self.lstm = nn.LSTM(embedding_dim, 196, bidirectional=True, batch_first=True, device=device, dropout=0.5, num_layers=2)
         self.linear_1 = nn.Linear(196*2, 3, device=device)
     def forward(self, x):
@@ -187,7 +129,7 @@ test_dataset = SarcasmDataset(test_df)
 train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, sampler=RandomSampler(train_dataset), collate_fn=collate)
 test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, sampler=RandomSampler(test_dataset), collate_fn=collate)
 
-model = SarcasmModel(embedding_dims)
+model = SarcasmModel(embedding_dims, embs_npa)
 loss_fn = nn.BCELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
